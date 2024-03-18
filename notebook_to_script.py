@@ -10,38 +10,61 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def preprocess_data(df):
+    """
+    Preprocess the input DataFrame.
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+    Returns:
+        pd.DataFrame: Preprocessed DataFrame.
+    """
+    # Convert 'datetime' column to datetime format
     df['datetime'] = pd.to_datetime(df['datetime'])
+
+    # Extract year, month, day, and weekend features
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.month
     df['day'] = df['datetime'].dt.day
     df['hour'] = df['datetime'].dt.hour
     df['dayofweek'] = df['datetime'].dt.dayofweek
     df['weekend'] = (df['datetime'].dt.dayofweek == 5) | (df['datetime'].dt.dayofweek == 6)
+    
     return df
 
 def make_pipeline():
+    """
+    Create a data processing and modeling pipeline.
+    Returns:
+        Pipeline: Pipeline for data processing and modeling.
+    """
+
     num_features = ['temp', 'atemp', 'humidity', 'windspeed', 'casual', 'registered']
     num_transformer = Pipeline(steps=[('imputer', SimpleImputer(strategy='mean')),
                                       ('scaler', StandardScaler())])
 
-    cat_features = ['season', 'holiday', 'workingday', 'weather']
-    cat_transformer = Pipeline(steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing'))])
-
-    preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_features),
-                                                   ('cat', cat_transformer, cat_features)])
+    preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_features)])
 
     pipe = Pipeline(steps=[('preprocessor', preprocessor),
                            ('regressor', RandomForestRegressor())])
     return pipe
 
 def train(df):
+    """
+    Train the machine learning model using the input data.
+    Args:
+        df (dataframe): preprocessed dataframe.
+    Returns:
+        RandomForestRegressor: Trained machine learning model.
+    """
     processed_df = preprocess_data(df)
+
+    # Extract features and target
     y = processed_df['count']
     x = processed_df.drop('count', 1)
 
     # Split data into train and test sets
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.8, random_state=1)
 
+    # Build and train the model
     trained_model = make_pipeline()
     trained_model.fit(x_train, y_train)
 
@@ -75,17 +98,11 @@ def train(df):
 
 if __name__ == "__main__":
     import argparse
-
+    # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_file", help="cleaned data file (CSV)")
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="display metrics",
-    )
     args = parser.parse_args()
 
     input_data = pd.read_csv(args.input_file)
-
+    # Train the model
     model = train(input_data)
